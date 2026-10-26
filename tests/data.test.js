@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCSV, importCSV, splitStatements, shuffled, lieReady } from '../dist/data.js';
+import { parseCSV, importCSV, splitStatements, shuffled, lieReady, truthsFor } from '../dist/data.js';
 
 test('Google Forms CSV: BOM, quoted commas, escaped quotes, multiline and CRLF', () => {
   const csv = '\uFEFFTimestamp,닉네임,질문,진실과거짓\r\n2026-10-26,메이플,"노래, 그리고 ""산책""","첫째\r\n둘째\r\n셋째"\r\n';
@@ -32,4 +32,12 @@ test('shuffle does not change the original participant list or lose participants
   assert.deepEqual(source, ['p0', 'p1', 'p2', 'p3']);
   assert.deepEqual([...result].sort(), source);
   assert.notDeepEqual(result, source);
+});
+
+test('participant profile shows only verified truths, regardless of the lie position', () => {
+  for (const lie of [0, 1, 2]) {
+    assert.deepEqual(truthsFor({ statements: 'first\nsecond\nthird', lie }), ['first', 'second', 'third'].filter((_, i) => i !== lie));
+  }
+  assert.deepEqual(truthsFor({ statements: 'first\nsecond\nthird', lie: null }), []);
+  assert.deepEqual(truthsFor({ statements: 'first\nsecond', lie: 0 }), []);
 });

@@ -74,3 +74,9 @@ export const demo = {
     { nickname: '노을', answers: ['wave to earth의 seasons', '친구들과 브런치, 저녁엔 새로운 레시피', '모양을 바꿔가며 먹는 파스타', '봄. 무언가 시작할 수 있을 것 같아서.'], statements: '빵을 직접 구워 먹는다.\n번지점프를 해봤다.\n식물을 열 개 넘게 키운다.', lie: 1 }
   ].map((p, i) => ({ ...p, id: `p${i}` }))
 };
+
+// Unconfigured or malformed statements must never be presented as truths.
+export function truthsFor(participant) {
+  if (!lieReady(participant)) return [];
+  return splitStatements(participant.statements).filter((_, i) => i !== participant.lie);
+}

@@ -1,16 +1,16 @@
-import { importCSV, splitStatements, shuffled, lieReady, demo } from './data.js';
+import { importCSV, splitStatements, shuffled, lieReady, truthsFor, demo } from './data.js';
 
 const app = document.querySelector('#app');
 const announcement = document.querySelector('#announcement');
 const colors = ['#9a6552', '#647c70', '#a58555', '#7d7186', '#586f83', '#a66670'];
-const state = { page: 'upload', tab: 'participants', data: null, filename: '', error: '', taste: null, lies: null };
+const state = { page: 'upload', tab: 'participants', data: null, filename: '', error: '', taste: null, lies: null, participant: null };
 const heart = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20 3.8 12.1C-1.6 6.4 8.2 1.4 12 8c3.8-6.6 13.6-1.6 8.2 4.1Z" fill="currentColor"/></svg>';
 const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const announce = message => { announcement.textContent = message; };
 const errorBox = () => state.error ? `<div class="error" role="alert">${esc(state.error)}</div>` : '';
 
 function frame(content) {
-  return `<div class="shell"><header class="topbar"><button class="brand" data-action="brand" aria-label="YVR Heart Signal 홈">${heart} Heart Signal <small>VANCOUVER</small></button><nav class="topnav" aria-label="주 메뉴">${state.data ? '<button class="text-btn" data-action="home">홈 화면</button><button class="text-btn" data-action="setup">진행 준비</button>' : ''}<span class="pill"><span class="dot"></span> ${state.data ? `${state.data.participants.length}명의 시그널` : 'YVR EDITION 01'}</span></nav></header><main id="main">${content}</main><footer class="footer"><span>VANCOUVER · 조금 더 가까워지는 시간</span><span class="signature">A little curiosity. A little connection.</span></footer></div>`;
+  return `<div class="shell"><header class="topbar"><button class="brand" data-action="brand" aria-label="YVR Heart Signal 홈">${heart} Heart Signal <small>VANCOUVER</small></button><nav class="topnav" aria-label="주 메뉴">${state.data ? '<button class="text-btn" data-action="home">홈 화면</button><button class="text-btn" data-action="setup">진행 준비</button>' : ''}<span class="pill"><span class="dot"></span> ${state.data ? `${state.data.participants.length}명의 시그널` : 'YVR EDITION 01'}</span></nav></header><main id="main">${content}</main></div>`;
 }
 
 function uploadPage() {
@@ -34,32 +34,38 @@ function lieOptions(p) {
 function homePage() {
   const count = state.data.questions.filter(q => q.enabled).length;
   const ready = state.data.participants.filter(lieReady).length;
-  return `<section class="hero"><div class="eyebrow">THE EVENING IS YOURS</div><h1>오늘, 우리는 얼마나<br>가까워질 수 <em>있을까요?</em></h1><p>정답보다 중요한 건, 그 뒤에 이어질 이야기.<br>마음이 가는 시그널부터 시작해 보세요.</p></section>${errorBox()}<div class="home-cards"><button class="mode-card taste" data-action="start-taste"><span class="mode-num">Signal No. 01</span><span class="mode-illustration" aria-hidden="true">♡</span><h2>취향 시그널</h2><p>답변을 보고, 떠오르는 사람을 말해 보세요.<br>카드를 뒤집으면 답변의 주인이 나타나요.</p><span class="start"><span>${count}개의 질문 · ${state.data.participants.length}명의 취향</span><span>시작하기 ↗</span></span></button><button class="mode-card lies" data-action="start-lies"><span class="mode-num">Signal No. 02</span><span class="mode-illustration" aria-hidden="true">“ ”</span><h2 class="english">Two Truths and a Lie</h2><p>세 가지 이야기, 그중 하나의 작은 거짓말.<br>어떤 이야기가 거짓일지 골라 보세요.</p><span class="start"><span>${ready === state.data.participants.length ? `${ready}명의 이야기 · 준비 완료` : `정답 설정 ${ready} / ${state.data.participants.length}명`}</span><span>시작하기 ↗</span></span></button></div><div class="home-meta">${state.data.participants.map(p => `<span class="chip">${esc(p.nickname)}</span>`).join('')}</div><p class="privacy" style="margin-bottom:32px">◇ 진행 상태는 홈에 다녀와도 유지돼요. 새로고침하면 파일을 다시 불러와야 해요.</p>`;
+  return `${errorBox()}<div class="home-cards"><button class="mode-card taste" data-action="start-taste"><span class="mode-num">Signal No. 01</span><span class="mode-illustration" aria-hidden="true">♡</span><h2>취향 시그널</h2><p>답변을 보고, 떠오르는 사람을 말해 보세요.<br>카드를 뒤집으면 답변의 주인이 나타나요.</p><span class="start"><span>${count}개의 질문 · ${state.data.participants.length}명의 취향</span><span>시작하기 ↗</span></span></button><button class="mode-card lies" data-action="start-lies"><span class="mode-num">Signal No. 02</span><span class="mode-illustration" aria-hidden="true">“ ”</span><h2 class="english">Two Truths and a Lie</h2><p>세 가지 이야기, 그중 하나의 작은 거짓말.<br>어떤 이야기가 거짓일지 골라 보세요.</p><span class="start"><span>${ready === state.data.participants.length ? `${ready}명의 이야기 · 준비 완료` : `정답 설정 ${ready} / ${state.data.participants.length}명`}</span><span>시작하기 ↗</span></span></button><button class="mode-card profiles" data-action="participants"><span class="mode-num">Signal No. 03</span><h2>참가자별 Q&amp;A</h2><p>한 사람의 모든 취향 답변과 두 가지 진실을 모아 봐요.</p><span class="start"><span>${state.data.participants.length}명의 질답</span><span>사람 선택하기 ↗</span></span></button></div><div class="home-meta">${state.data.participants.map(p => `<span class="chip">${esc(p.nickname)}</span>`).join('')}</div><p class="privacy" style="margin-bottom:32px">◇ 진행 상태는 홈에 다녀와도 유지돼요. 새로고침하면 파일을 다시 불러와야 해요.</p>`;
+}
+
+function participantPage() {
+  const { participants, questions } = state.data;
+  const person = participants.find(p => p.id === state.participant) || participants[0];
+  const truths = truthsFor(person);
+  return `<section class="profile-page"><div class="section-head"><h1>참가자별 Q&amp;A</h1></div><div class="participant-picker" role="group" aria-label="참가자 선택">${participants.map(p => `<button class="person-button ${p.id === person.id ? 'active' : ''}" data-person="${p.id}" aria-pressed="${p.id === person.id}">${esc(p.nickname)}</button>`).join('')}</div><section aria-label="${esc(person.nickname)}님의 질답"><h2 class="profile-name">${esc(person.nickname)}</h2><div class="qa-list">${questions.map((q, i) => `<article class="qa-item"><h3>${i + 1}. ${esc(q.title)}</h3><p>${esc(person.answers[q.id] || '아직 답변이 없어요')}</p></article>`).join('')}</div><section class="profile-truths"><h2>두 가지 진실</h2>${truths.length ? `<div class="truth-list">${truths.map(t => `<p class="truth-item">${esc(t)}</p>`).join('')}</div>` : '<p class="editor-note">진행 준비에서 거짓 문장을 지정하면 두 가지 진실을 볼 수 있어요.</p>'}</section></section><div class="setup-actions"><button class="secondary" data-action="home">← 홈 화면</button></div></section>`;
 }
 
 function gameHeader(kind, index, total) {
   return `<div class="game-top"><span>${kind === 'taste' ? '01 / 취향 시그널' : '02 / TWO TRUTHS AND A LIE'}</span><span>${String(index + 1).padStart(2, '0')} <span style="color:#b1a597">/ ${String(total).padStart(2, '0')}</span></span></div><div class="progress" role="progressbar" aria-label="진행률" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${index + 1}"><span style="width:${100 * (index + 1) / total}%"></span></div>`;
 }
 
-function gameNav(index, total, caption) {
-  return `<div class="nav-row"><button class="secondary" data-action="prev" ${index === 0 ? 'disabled' : ''}>← 이전</button><span class="nav-caption">${caption}</span><button class="primary" data-action="next">${index === total - 1 ? '마무리하기' : '다음'} →</button></div>`;
+function gameNav(index, total) {
+  return `<div class="nav-row"><button class="secondary" data-action="prev" ${index === 0 ? 'disabled' : ''}>← 이전</button><button class="primary" data-action="next">${index === total - 1 ? '마무리하기' : '다음'} →</button></div>`;
 }
 
 function tastePage() {
   const run = state.taste;
   const item = run.items[run.index];
-  const revealed = item.revealed.size;
-  return `<section class="game">${gameHeader('taste', run.index, run.items.length)}<div class="question-head"><div class="eyebrow">GUESS WHO?</div><h1>${esc(item.question.title)}</h1><p>누구의 취향일까요? 카드를 눌러 답변의 주인을 만나보세요.</p></div><div class="answer-grid">${item.order.map((id, i) => {
+  return `<section class="game">${gameHeader('taste', run.index, run.items.length)}<div class="question-head"><h1>${run.index + 1}. ${esc(item.question.title)}</h1></div><div class="answer-grid">${item.order.map((id, i) => {
     const p = state.data.participants.find(p => p.id === id);
     const open = item.revealed.has(id);
-    return `<button class="flip-card ${open ? 'flipped' : ''}" data-flip="${id}" aria-pressed="${open}" aria-label="${open ? `${esc(p.nickname)}님의 답변 공개됨` : `답변 ${i + 1}: ${esc(p.answers[item.question.id] || '아직 답변이 없어요')}. 눌러서 닉네임 공개`}" style="--card:${colors[i % colors.length]}"><span class="flip-inner"><span class="face front" aria-hidden="${open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="answer">${esc(p.answers[item.question.id] || '아직 답변이 없어요')}</span><span class="face-hint">TAP TO REVEAL ↗</span></span><span class="face back" aria-hidden="${!open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="tiny">이 취향의 주인공은</span><span class="nickname">${esc(p.nickname)}</span><span class="face-hint">반가워요, 나의 시그널 ♡</span></span></span></button>`;
-  }).join('')}</div>${gameNav(run.index, run.items.length, `${revealed} / ${item.order.length} 공개`)}<div class="game-footnote">Different tastes, unexpected connections.</div></section>`;
+    return `<button class="flip-card ${open ? 'flipped' : ''}" data-flip="${id}" aria-pressed="${open}" aria-label="${open ? `${esc(p.nickname)}. 눌러서 답변 보기` : `답변 ${i + 1}: ${esc(p.answers[item.question.id] || '아직 답변이 없어요')}. 눌러서 닉네임 공개`}" style="--card:${colors[i % colors.length]}"><span class="flip-inner"><span class="face front" aria-hidden="${open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="answer">${esc(p.answers[item.question.id] || '아직 답변이 없어요')}</span></span><span class="face back" aria-hidden="${!open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="nickname">${esc(p.nickname)}</span></span></span></button>`;
+  }).join('')}</div>${gameNav(run.index, run.items.length)}</section>`;
 }
 
 function liesPage() {
   const run = state.lies, round = run.rounds[run.index];
   const p = state.data.participants[run.index];
-  return `<section class="game">${gameHeader('lies', run.index, run.rounds.length)}<div class="question-head"><div class="eyebrow">TWO TRUTHS. ONE LITTLE LIE.</div><h1>${esc(p.nickname)}님의 이야기</h1><p>세 가지 이야기 중, 거짓이라고 생각하는 문장을 골라 주세요.</p></div><div class="statements">${splitStatements(p.statements).map((s, i) => `<button class="statement-card ${round.revealed ? i === p.lie ? 'lie' : 'truth' : round.selected === i ? 'selected' : ''}" data-select="${i}" aria-pressed="${round.selected === i}" ${round.revealed ? 'aria-disabled="true"' : ''}><span class="statement-number">${String(i + 1).padStart(2, '0')}</span><span class="statement-text">${esc(s)}</span>${round.revealed ? `<span class="result-label">${i === p.lie ? '거짓' : '진실'}${round.selected === i ? ' · 내 선택' : ''}</span>` : ''}</button>`).join('')}</div><div class="reveal-box">${round.revealed ? `<p class="result-message">${round.selected === p.lie ? '작은 거짓말을 찾아냈어요!' : '예상 밖의 이야기였네요!'}</p><p class="result-sub">붉은 카드는 거짓, 초록 카드는 진실이에요. 이제 그 이야기를 들려주세요.</p>` : `<button class="primary" data-action="reveal" ${round.selected === null ? 'disabled' : ''}>정답 확인 <span aria-hidden="true">↗</span></button>`}</div>${gameNav(run.index, run.rounds.length, `${run.index + 1}번째 이야기`)}<div class="game-footnote">Every story brings us a little closer.</div></section>`;
+  return `<section class="game">${gameHeader('lies', run.index, run.rounds.length)}<div class="question-head"><h1>${esc(p.nickname)}님의 이야기</h1><p>세 가지 이야기 중, 거짓이라고 생각하는 문장을 골라 주세요.</p></div><div class="statements">${splitStatements(p.statements).map((s, i) => `<button class="statement-card ${round.revealed ? i === p.lie ? 'lie' : 'truth' : round.selected === i ? 'selected' : ''}" data-select="${i}" aria-pressed="${round.selected === i}" ${round.revealed ? 'aria-disabled="true"' : ''}><span class="statement-number">${String(i + 1).padStart(2, '0')}</span><span class="statement-text">${esc(s)}</span>${round.revealed ? `<span class="result-label">${i === p.lie ? '거짓' : '진실'}${round.selected === i ? ' · 내 선택' : ''}</span>` : ''}</button>`).join('')}</div><div class="reveal-box">${round.revealed ? `<p class="result-message">${round.selected === p.lie ? '작은 거짓말을 찾아냈어요!' : '예상 밖의 이야기였네요!'}</p><p class="result-sub">붉은 카드는 거짓, 초록 카드는 진실이에요. 이제 그 이야기를 들려주세요.</p>` : `<button class="primary" data-action="reveal" ${round.selected === null ? 'disabled' : ''}>정답 확인 <span aria-hidden="true">↗</span></button>`}</div>${gameNav(run.index, run.rounds.length)}</section>`;
 }
 
 function finishPage() {
@@ -68,11 +74,11 @@ function finishPage() {
 }
 
 function render(focus = false) {
-  const pages = { upload: uploadPage, setup: setupPage, home: homePage, taste: tastePage, lies: liesPage, 'finish-taste': finishPage, 'finish-lies': finishPage };
+  const pages = { upload: uploadPage, setup: setupPage, home: homePage, participants: participantPage, taste: tastePage, lies: liesPage, 'finish-taste': finishPage, 'finish-lies': finishPage };
   app.innerHTML = frame(pages[state.page]());
   if (focus) {
     window.scrollTo(0, 0);
-    const heading = app.querySelector('h1');
+    const heading = app.querySelector('h1, h2');
     if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
   }
   wireDropzone();
@@ -110,17 +116,20 @@ app.addEventListener('click', e => {
   if (!target || target.disabled) return;
   const action = target.dataset.action;
   if (target.dataset.tab) { state.tab = target.dataset.tab; state.error = ''; render(); app.querySelector(`#tab-${state.tab}`).focus(); return; }
+  if (target.dataset.person) {
+    state.participant = target.dataset.person; render();
+    app.querySelector(`[data-person="${state.participant}"]`).focus(); return;
+  }
   if (target.dataset.flip) {
     const item = state.taste.items[state.taste.index];
     const id = target.dataset.flip;
-    if (item.revealed.has(id)) return;
-    item.revealed.add(id);
-    target.classList.add('flipped'); target.setAttribute('aria-pressed', 'true');
+    const open = !item.revealed.has(id);
+    if (open) item.revealed.add(id); else item.revealed.delete(id);
+    target.classList.toggle('flipped', open); target.setAttribute('aria-pressed', String(open));
     const p = state.data.participants.find(p => p.id === id);
-    target.setAttribute('aria-label', `${p.nickname}님의 답변 공개됨`);
-    target.querySelector('.front').setAttribute('aria-hidden', 'true'); target.querySelector('.back').setAttribute('aria-hidden', 'false');
-    app.querySelector('.nav-caption').textContent = `${item.revealed.size} / ${item.order.length} 공개`;
-    announce(`이 답변의 주인공은 ${p.nickname}님이에요.`); return;
+    target.setAttribute('aria-label', open ? `${p.nickname}. 눌러서 답변 보기` : `답변: ${p.answers[item.question.id] || '아직 답변이 없어요'}. 눌러서 닉네임 공개`);
+    target.querySelector('.front').setAttribute('aria-hidden', String(open)); target.querySelector('.back').setAttribute('aria-hidden', String(!open));
+    announce(open ? `${p.nickname}` : '답변으로 돌아왔어요.'); return;
   }
   if (target.dataset.select !== undefined) {
     const round = state.lies.rounds[state.lies.index];
@@ -129,7 +138,15 @@ app.addEventListener('click', e => {
     app.querySelector(`[data-select="${round.selected}"]`).focus(); return;
   }
   switch (action) {
-    case 'brand': go(state.data ? 'home' : 'upload'); break;
+    case 'brand':
+      state.data = null;
+      state.filename = '';
+      state.tab = 'participants';
+      state.participant = null;
+      invalidateRuns();
+      go('upload');
+      announce('초기화했어요. CSV 파일을 다시 불러와 주세요.');
+      break;
     case 'home': go('home'); break;
     case 'setup': go('setup'); break;
     case 'choose-file': app.querySelector('#csv-file').click(); break;
@@ -139,6 +156,7 @@ app.addEventListener('click', e => {
       if (state.data.participants.some(p => !p.nickname.trim())) { state.error = '모든 참가자의 닉네임을 입력해 주세요.'; state.tab = 'participants'; render(); break; }
       go('home'); break;
     }
+    case 'participants': go('participants'); break;
     case 'start-taste': startTaste(); break;
     case 'start-lies': startLies(); break;
     case 'prev': case 'next': {
