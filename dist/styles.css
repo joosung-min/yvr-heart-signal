@@ -24,3 +24,31 @@
 .truth-list{display:grid;gap:12px}
 .truth-item{font-size:19px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;padding-left:18px;border-left:3px solid #64846d}
 @media(max-width:700px){.qa-item{padding:20px}.qa-item p{font-size:18px}.profile-truths{padding:20px}.truth-item{font-size:17px}}
+
+/* Use the screen for the game itself, especially on landscape iPads. */
+@media (min-width:701px) {
+  .shell:has(.game) { max-width:1440px; padding:0 24px; }
+  .shell:has(.game) .topbar { height:64px; }
+  .game { padding:18px 0 20px; }
+  .progress { margin-top:10px; }
+  .question-head { padding:20px 0; }
+  .question-head h1 { max-width:1100px; font-size:clamp(28px, 2.8vw, 38px); line-height:1.35; }
+  .answer-grid { gap:14px; }
+  .flip-card { height:clamp(170px, 23vh, 220px); }
+  .face { padding:28px 20px 20px; }
+  .answer { font-size:clamp(32px, 3.6vw, 48px); font-weight:500; line-height:1.35; margin:0; max-height:100%; }
+  .back .nickname { font-size:clamp(40px, 4.5vw, 60px); line-height:1.25; }
+  .card-index { top:12px; left:15px; }
+  .nav-row { margin-top:16px; }
+  .statement-text { font-size:clamp(24px, 2.5vw, 32px); line-height:1.5; }
+  .statements { max-width:1100px; }
+}
+@media (max-width:700px) {
+  .shell:has(.game) { padding:0 14px; }
+  .shell:has(.game) .topbar { height:64px; }
+  .game { padding-top:16px; }
+  .question-head { padding:20px 0; }
+  .flip-card { height:180px; }
+  .answer { font-size:23px; line-height:1.4; margin:0; max-height:100%; }
+  .back .nickname { font-size:32px; }
+}
