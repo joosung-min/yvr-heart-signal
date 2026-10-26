@@ -48,7 +48,7 @@ export function importCSV(text) {
     if (!row[1].trim()) throw new Error(`${i + 2}번째 행의 닉네임을 입력해 주세요.`);
     return { id: `p${i}`, nickname: row[1].trim(), answers: row.slice(2, -1).map(s => s.trim()), statements: row.at(-1).trim(), lie: null };
   });
-  const questions = headers.slice(2, -1).map((title, i) => ({ id: i, title: title || `질문 ${i + 1}`, enabled: true }));
+  const questions = headers.slice(2, -1).map((title, i) => ({ id: i, title: title || `질문 ${i + 1}`, enabled: true, part: i < 10 ? 0 : 1 }));
   return { participants, questions };
 }
 
@@ -93,7 +93,19 @@ export function createTasteRun(questions, participants, randomStarts = true, ran
   };
 }
 
-// Split before filtering, so excluding a question never changes part membership.
+// IDs retain the original CSV answer column while part/order can be edited.
 export function tastePartQuestions(questions, part) {
-  return questions.slice(part * 10, part * 10 + 10).filter(q => q.enabled);
+  return questions.filter(q => questionPart(q) === part && q.enabled);
+}
+
+export function questionPart(question) {
+  return question.part ?? (question.id < 10 ? 0 : 1);
+}
+
+export function arrangeQuestions(questions, groups) {
+  const ids = groups.flat().map(Number);
+  if (groups.length !== 2 || ids.length !== questions.length || new Set(ids).size !== ids.length || ids.some(id => !questions.some(q => q.id === id))) {
+    throw new Error('Invalid question order');
+  }
+  return groups.flatMap((group, part) => group.map(id => ({ ...questions.find(q => q.id === Number(id)), part })));
 }

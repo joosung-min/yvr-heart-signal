@@ -6,7 +6,7 @@ test('validation, reset, and separate taste-part progress survive navigation', a
   const app = {
     innerHTML: '',
     addEventListener(type, listener) { handlers[type] = listener; },
-    querySelector() { return null; }
+    querySelector(selector) { return selector.startsWith('[data-select=') ? { focus() {} } : null; }
   };
   const announcement = { textContent: '' };
   globalThis.document = {
@@ -68,6 +68,31 @@ test('validation, reset, and separate taste-part progress survive navigation', a
     click('taste-parts');
     part(1);
     assert.match(app.innerHTML, /<h1>12\. Question 12<\/h1>/);
+
+    const move = (kind, id, key) => {
+      const list = { dataset: { sortKind: kind } };
+      const row = { dataset: { sortItem: String(id) }, closest: () => list };
+      const handle = { closest: () => row };
+      handlers.keydown({ target: { closest: () => handle }, key, preventDefault() {} });
+    };
+    click('setup');
+    move('questions', '10', 'ArrowLeft');
+    move('questions', '10', 'ArrowUp');
+    part(0);
+    for (let i = 0; i < 8; i++) click('next');
+    assert.match(app.innerHTML, /Question 11<\/h1>/);
+    assert.match(app.innerHTML, /Answer 11/);
+
+    click('demo');
+    click('setup');
+    move('people', 'p1', 'ArrowUp');
+    click('start-lies');
+    assert.match(app.innerHTML, /바다님의 이야기/);
+    handlers.click({ target: { closest: () => ({ dataset: { select: '1' } }) } });
+    click('reveal');
+    assert.match(announcement.textContent, /2번 문장이 거짓/);
+    click('next');
+    assert.match(app.innerHTML, /메이플님의 이야기/);
   } finally {
     delete globalThis.document;
     delete globalThis.window;

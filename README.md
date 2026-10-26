@@ -9,13 +9,13 @@ A browser-only meeting game powered by Google Forms responses.
 1. Download your Google Sheets responses as **UTF-8 CSV** and upload the file.
 2. Review nicknames and questions. In **진실과 거짓**, put one statement on each of three lines and select the lie for each participant.
 3. Choose a section:
-   - **취향 시그널:** choose Part 1 (CSV questions 1–10) or Part 2 (11–20). Each part keeps its own progress; exclusions do not move questions between parts. Restart resets only the selected part. Tap cards to switch between answers and nicknames. Each question randomly starts with all answers or all nicknames; disable **시작 면 랜덤** under **진행 준비 → 취향 질문** to always start with answers. Four-person grids use taller cards; six-person grids stay compact.
-   - **Two Truths and a Lie:** pick a statement, then reveal the truth.
+   - **취향 시그널:** choose Part 1 (CSV questions 1–10) or Part 2 (initially 11–20). Under **진행 준비 → 취향 질문**, drag the **⠿** handles to reorder questions or move them between the two columns. The **↔** button also transfers questions; arrow keys work on focused handles. Question numbers follow the configured order, while answers stay linked to their original questions. Each part keeps its own progress; exclusions do not move questions between parts. Restart resets only the selected part. Tap cards to switch between answers and nicknames. Each question randomly starts with all answers or all nicknames; disable **시작 면 랜덤** under **진행 준비 → 취향 질문** to always start with answers. Four-person grids use taller cards; six-person grids stay compact.
+   - **Two Truths and a Lie:** pick a statement, then reveal the truth. In **진행 준비 → 진실과 거짓**, drag the participant names to set game order. Statements and lie settings stay attached to each person.
    - **참가자별 Q&A:** view all of one person's answers and their two truths. Truths stay hidden until the lie is configured.
 
 CSV columns: **Timestamp → Nickname → Taste questions… → Two Truths and a Lie**. Each participant occupies one row. Quoted multiline cells are supported; maximum file size is 10 MB.
 
-**Responses stay in browser memory.** Refreshing, closing the tab, or pressing **Heart Signal** clears responses, settings, and progress. Navigation within the app preserves progress; editing settings resets the relevant game. Actual participant CSVs are excluded from Git.
+**Responses stay in browser memory.** Refreshing, closing the tab, or pressing **Heart Signal** clears responses, settings, and progress. Navigation within the app preserves progress; editing settings or reordering items resets the relevant game. All ordering changes are session-only. Actual participant CSVs are excluded from Git.
 
 ## Develop
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCSV, importCSV, splitStatements, shuffled, lieReady, truthsFor, createTasteRun, tastePartQuestions } from '../dist/data.js';
+import { parseCSV, importCSV, splitStatements, shuffled, lieReady, truthsFor, createTasteRun, tastePartQuestions, arrangeQuestions } from '../dist/data.js';
 
 test('Google Forms CSV: BOM, quoted commas, escaped quotes, multiline and CRLF', () => {
   const csv = '\uFEFFTimestamp,닉네임,질문,진실과거짓\r\n2026-10-26,메이플,"노래, 그리고 ""산책""","첫째\r\n둘째\r\n셋째"\r\n';
@@ -73,4 +73,18 @@ test('CSV position fixes part membership before question exclusions', () => {
   questions.slice(0, 10).forEach(q => { q.enabled = false; });
   assert.equal(tastePartQuestions(questions, 0).length, 0);
   assert.equal(tastePartQuestions(questions, 1).length, 10);
+});
+
+test('moving and reordering questions preserves their CSV answer columns and exclusions', () => {
+  const questions = [0, 1, 2].map(id => ({ id, title: `Q${id}`, enabled: id !== 1 }));
+  const arranged = arrangeQuestions(questions, [['2'], ['1', '0']]);
+  assert.deepEqual(arranged.map(q => [q.id, q.part]), [[2, 0], [1, 1], [0, 1]]);
+  assert.deepEqual(tastePartQuestions(arranged, 1).map(q => q.id), [0]);
+  const answers = ['first', 'second', 'third'];
+  assert.deepEqual(arranged.map(q => answers[q.id]), ['third', 'second', 'first']);
+  assert.equal(questions[0].part, undefined);
+  assert.throws(() => arrangeQuestions(questions, [['0', '0'], ['2']]));
+  assert.throws(() => arrangeQuestions(questions, [['0'], ['1']]));
+  assert.throws(() => arrangeQuestions(questions, [['0'], ['1', '99']]));
+  assert.deepEqual(tastePartQuestions(arrangeQuestions(questions, [[], ['0', '1', '2']]), 0), []);
 });

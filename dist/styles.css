@@ -1137,3 +1137,121 @@ textarea {
 
 .part-cards { margin-top:8px; }
 .part-cards .mode-card h2 { margin-top:40px; }
+
+.sort-help {
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.8;
+  margin:12px 0 16px;
+}
+.questions-board {
+  overflow-x:auto;
+  padding-bottom:10px;
+}
+.question-columns {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(250px,1fr));
+  gap:18px;
+}
+.question-column {
+  min-width:0;
+  background:#efe9e0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:14px;
+}
+.question-column h2 {
+  font-size:19px;
+  margin-bottom:14px;
+}
+.question-column h2 span {
+  display:block;
+  font-size:12px;
+  font-weight:400;
+  color:var(--muted);
+  margin-top:6px;
+}
+.sort-list {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-height:110px;
+  padding:5px;
+  border:1px dashed #d6c6b8;
+  border-radius:8px;
+}
+.sort-list:empty::before {
+  content:'이곳으로 질문을 옮겨 주세요';
+  margin:auto;
+  color:var(--muted);
+  font-size:12px;
+}
+.sort-question,.sort-person {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid #ded1c3;
+  background:#fcfaf7;
+  border-radius:8px;
+  padding:8px;
+}
+.sort-question label {
+  flex:1;
+  min-width:0;
+  font-size:13px;
+  line-height:1.7;
+  overflow-wrap:anywhere;
+}
+.sort-question input {
+  width:17px;
+  height:17px;
+  accent-color:var(--red);
+  flex-shrink:0;
+}
+.sort-number {
+  color:#a08770;
+}
+.sort-handle {
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  cursor:grab;
+  width:38px;
+  min-height:44px;
+  flex-shrink:0;
+  color:#977e69;
+  font-size:25px;
+}
+.sort-handle:active {
+  cursor:grabbing;
+}
+.sort-transfer {
+  width:32px;
+  min-height:44px;
+  flex-shrink:0;
+  color:var(--red);
+  font-size:20px;
+}
+.people-sort {
+  margin-bottom:26px;
+}
+.sort-person {
+  font-size:15px;
+}
+.sort-placeholder {
+  opacity:.28;
+  outline:2px dashed var(--red);
+}
+.sort-ghost {
+  position:fixed;
+  z-index:1000;
+  pointer-events:none;
+  opacity:.95;
+  box-shadow:0 12px 32px #332e2b33;
+  transform:rotate(-1deg);
+}
+.is-sorting,.is-sorting * {
+  cursor:grabbing!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+}

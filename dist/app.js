@@ -1,10 +1,12 @@
-import { importCSV, splitStatements, lieReady, truthsFor, createTasteRun, tastePartQuestions, demo } from './data.js?v=20261026-5';
+import { importCSV, splitStatements, lieReady, truthsFor, createTasteRun, tastePartQuestions, questionPart, arrangeQuestions, demo } from './data.js?v=20261026-6';
+
+import { attachSortable } from './sortable.js?v=20261026-6';
 
 const app = document.querySelector('#app');
 const announcement = document.querySelector('#announcement');
 const colors = ['#9a6552', '#647c70', '#a58555', '#7d7186', '#586f83', '#a66670'];
 let fileReadVersion = 0;
-const state = { page: 'upload', tab: 'participants', data: null, filename: '', error: '', taste: null, tasteParts: [null, null], tastePart: 0, lies: null, participant: null, randomStarts: true };
+const state = { page: 'upload', tab: 'participants', data: null, filename: '', error: '', taste: null, tasteParts: [null, null], tastePart: 0, lies: null, lieOrder: null, participant: null, randomStarts: true };
 const heart = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20 3.8 12.1C-1.6 6.4 8.2 1.4 12 8c3.8-6.6 13.6-1.6 8.2 4.1Z" fill="currentColor"/></svg>';
 const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const announce = message => { announcement.textContent = message; };
@@ -18,12 +20,64 @@ function uploadPage() {
   return `<section class="hero"><div class="eyebrow">YVR HEART SIGNAL / OUR FIRST CHAPTER</div><h1>우연한 만남,<br>서로를 알아가는 <em>시그널.</em></h1><p>스무 개의 질문과 세 개의 이야기.<br>어떤 답변 뒤에, 어떤 사람이 기다리고 있을까요?</p><svg class="hero-art" viewBox="0 0 220 180" aria-hidden="true"><ellipse class="orbit" cx="110" cy="86" rx="102" ry="49" transform="rotate(-28 110 86)"/><ellipse class="orbit" cx="110" cy="86" rx="70" ry="78" transform="rotate(25 110 86)"/><path class="heart" d="M110 128 72 92c-26-28 21-49 38-19 17-30 64-9 38 19Z"/><circle cx="189" cy="40" r="4" fill="#c3a084"/><text x="66" y="173">YOU + ME + MAYBE</text></svg></section>${errorBox()}<div class="upload-layout"><section class="upload-box" id="drop-zone"><svg class="upload-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="9" y="5" width="29" height="38" rx="4" stroke="currentColor" stroke-width="1.3"/><path d="M24 32V16m-6 6 6-6 6 6M16 37h16" stroke="currentColor" stroke-width="1.3"/></svg><h2>우리의 이야기를 불러오세요</h2><p>Google Forms 응답을 CSV로 내려받아 넣어 주세요.<br>파일을 이곳에 끌어다 놓아도 좋아요.</p><button class="primary" data-action="choose-file">CSV 파일 선택 <span aria-hidden="true">↗</span></button><input id="csv-file" class="sr-only" type="file" accept=".csv,text/csv" aria-label="응답 CSV 파일 선택"></section><aside class="intro-box"><div class="eyebrow">HOW IT WORKS</div><h2>Let the signals begin.</h2><div class="step"><b>01</b><p>응답 파일을 불러오고<span>참가자와 질문을 확인해요.</span></p></div><div class="step"><b>02</b><p>오늘의 이야기를 준비하고<span>세 문장 중 거짓 하나를 지정해요.</span></p></div><div class="step"><b>03</b><p>궁금한 마음으로 시작해요<span>카드를 열고, 서로의 이야기를 나눠요.</span></p></div><button class="demo-btn" data-action="demo">가상 참가자 4명으로 먼저 둘러보기 →</button></aside></div><p class="privacy" style="margin-bottom:28px"><span aria-hidden="true">◇</span> 응답은 이 브라우저 메모리에서만 처리해요. 새로고침하면 응답과 진행 상태가 사라져요.</p>`;
 }
 
+function questionNumber(question) {
+  return state.data.questions.findIndex(q => q.id === question.id) + 1;
+}
+
+function partRange(part) {
+  const questions = state.data.questions.filter(q => questionPart(q) === part);
+  return questions.length ? `질문 ${questionNumber(questions[0])}–${questionNumber(questions.at(-1))}` : '질문 없음';
+}
+
+function liePeople() {
+  return (state.lieOrder || state.data.participants.map(p => p.id)).map(id => state.data.participants.find(p => p.id === id));
+}
+
+function commitSort(kind, groups, id) {
+  if (kind === 'questions') {
+    const previous = [0, 1].map(part => state.data.questions.filter(q => questionPart(q) === part).map(q => String(q.id)));
+    if (JSON.stringify(previous) === JSON.stringify(groups)) return;
+    state.data.questions = arrangeQuestions(state.data.questions, groups);
+    state.taste = null;
+    state.tasteParts = [null, null];
+  } else {
+    const previous = liePeople().map(p => p.id);
+    if (JSON.stringify(previous) === JSON.stringify(groups[0])) return;
+    if (groups[0].length !== previous.length || new Set(groups[0]).size !== previous.length || groups[0].some(id => !previous.includes(id))) return;
+    state.lieOrder = groups[0];
+    state.lies = null;
+  }
+  render();
+  app.querySelector(`[data-sort-item="${id}"] [data-sort-handle]`)?.focus();
+  announce('진행 순서를 변경했어요.');
+}
+
+function moveSortItem(kind, id, direction) {
+  const groups = kind === 'questions'
+    ? [0, 1].map(part => state.data.questions.filter(q => questionPart(q) === part).map(q => String(q.id)))
+    : [liePeople().map(p => p.id)];
+  const source = groups.findIndex(group => group.includes(id));
+  if (source < 0) return;
+  const index = groups[source].indexOf(id);
+  if (direction === 'ArrowLeft' || direction === 'ArrowRight') {
+    if (kind !== 'questions') return;
+    const target = direction === 'ArrowLeft' ? 0 : 1;
+    if (source === target) return;
+    groups[source].splice(index, 1); groups[target].push(id);
+  } else {
+    const target = index + (direction === 'ArrowUp' ? -1 : 1);
+    if (target < 0 || target >= groups[source].length) return;
+    groups[source].splice(index, 1); groups[source].splice(target, 0, id);
+  }
+  commitSort(kind, groups, id);
+}
+
 function setupPage() {
   const { participants, questions } = state.data;
   let content = '';
   if (state.tab === 'participants') content = `<div class="participant-fields">${participants.map((p, i) => `<div class="field-card"><label class="field-label" for="nickname-${p.id}">PARTICIPANT ${String(i + 1).padStart(2, '0')}</label><input id="nickname-${p.id}" data-nickname="${p.id}" value="${esc(p.nickname)}" maxlength="60" autocomplete="off"></div>`).join('')}</div><div class="notice">화면에 공개할 닉네임을 확인해 주세요. 취향 카드의 순서는 질문마다 무작위로 섞여요.</div>`;
-  if (state.tab === 'questions') content = `<label class="question-edit random-option"><input type="checkbox" data-random-starts ${state.randomStarts ? 'checked' : ''}><div><strong>시작 면 랜덤</strong><p>질문마다 모든 카드를 답변 또는 닉네임으로 시작해요. 끄면 항상 답변부터 보여요.</p></div></label><div class="setup-list">${questions.map((q, i) => `<label class="question-edit"><input type="checkbox" data-question="${q.id}" ${q.enabled ? 'checked' : ''}><div><span>Part ${i < 10 ? 1 : 2} · ${String(i + 1).padStart(2, '0')}</span>${esc(q.title)}</div></label>`).join('')}</div>`;
-  if (state.tab === 'lies') content = `<div class="notice">진행자만 보는 정답 설정 화면이에요. 참가자별로 세 문장을 한 줄씩 적고, 거짓인 문장 하나를 선택해 주세요.</div><div class="setup-list">${participants.map(p => `<section class="lie-editor"><h3>${esc(p.nickname)}</h3><label class="field-label" for="statements-${p.id}">두 가지 진실과 하나의 거짓 · 한 줄에 한 문장</label><textarea id="statements-${p.id}" data-statements="${p.id}" rows="4">${esc(p.statements)}</textarea><div id="options-${p.id}">${lieOptions(p)}</div></section>`).join('')}</div>`;
+  if (state.tab === 'questions') content = `<label class="question-edit random-option"><input type="checkbox" data-random-starts ${state.randomStarts ? 'checked' : ''}><div><strong>시작 면 랜덤</strong><p>질문마다 모든 카드를 답변 또는 닉네임으로 시작해요. 끄면 항상 답변부터 보여요.</p></div></label><p class="sort-help">⠿ 손잡이를 드래그해 순서와 파트를 바꿔 주세요. 방향키로도 이동할 수 있어요. 순서를 바꾸면 취향 게임의 진행 상태가 초기화돼요.</p><div class="questions-board"><div class="question-columns">${[0, 1].map(part => `<section class="question-column"><h2>Part ${part + 1} <span>${part === 0 ? '취향 알아보기' : '조금 더 알아보기'}</span></h2><div class="sort-list" data-sort-list="${part}" data-sort-kind="questions" aria-label="Part ${part + 1} 질문">${questions.filter(q => questionPart(q) === part).map(q => `<div class="sort-question" data-sort-item="${q.id}"><button class="sort-handle" data-sort-handle aria-label="${esc(q.title)} 순서 이동">⠿</button><input id="question-${q.id}" type="checkbox" data-question="${q.id}" ${q.enabled ? 'checked' : ''} aria-label="${esc(q.title)} 포함"><label for="question-${q.id}"><span class="sort-number">${questionNumber(q)}.</span> ${esc(q.title)}</label><button class="sort-transfer" data-transfer="${q.id}" aria-label="${esc(q.title)} 다른 파트로 이동">↔</button></div>`).join('')}</div></section>`).join('')}</div></div>`;
+  if (state.tab === 'lies') content = `<div class="notice">진행자만 보는 정답 설정 화면이에요. 참가자별로 세 문장을 한 줄씩 적고, 거짓인 문장 하나를 선택해 주세요.</div><p class="sort-help">아래 이름을 드래그해 게임의 참가자 순서를 바꿔 주세요. 순서를 바꾸면 진실·거짓 게임의 진행 상태가 초기화돼요.</p><div class="sort-list people-sort" data-sort-list="people" data-sort-kind="people" aria-label="진실과 거짓 참가자 순서">${liePeople().map((p, i) => `<div class="sort-person" data-sort-item="${p.id}"><button class="sort-handle" data-sort-handle aria-label="${esc(p.nickname)} 순서 이동">⠿</button><span>${i + 1}. ${esc(p.nickname)}</span></div>`).join('')}</div><div class="setup-list">${liePeople().map(p => `<section class="lie-editor"><h3>${esc(p.nickname)}</h3><label class="field-label" for="statements-${p.id}">두 가지 진실과 하나의 거짓 · 한 줄에 한 문장</label><textarea id="statements-${p.id}" data-statements="${p.id}" rows="4">${esc(p.statements)}</textarea><div id="options-${p.id}">${lieOptions(p)}</div></section>`).join('')}</div>`;
   return `<div class="section-head"><div><div class="eyebrow">BEFORE WE BEGIN</div><h1>오늘의 시그널을 준비해요</h1><p class="desc">함께할 사람들, 궁금한 질문들, 그리고 작은 비밀 하나.</p></div><span class="meta">${esc(state.filename)}</span></div><div class="tabs" role="tablist" aria-label="진행 준비">${[['participants', '참가자'], ['questions', '취향 질문'], ['lies', '진실과 거짓']].map(([id, label]) => `<button id="tab-${id}" class="tab ${state.tab === id ? 'active' : ''}" role="tab" aria-selected="${state.tab === id}" aria-controls="setup-panel" data-tab="${id}">${label}</button>`).join('')}</div>${errorBox()}<div id="setup-panel" role="tabpanel" aria-labelledby="tab-${state.tab}">${content}</div><div class="setup-actions"><button class="text-btn" data-action="replace">다른 CSV 불러오기</button><button class="primary" data-action="ready">준비 완료 · 홈으로 →</button></div>`;
 }
 
@@ -42,7 +96,7 @@ function tastePartsPage() {
   return `<section><div class="section-head"><h1>취향 시그널</h1></div>${errorBox()}<div class="home-cards part-cards">${['취향 알아보기', '조금 더 알아보기'].map((title, part) => {
     const questions = tastePartQuestions(state.data.questions, part);
     const run = state.tasteParts[part];
-    return `<button class="mode-card ${part === 0 ? 'taste' : 'lies'}" data-part="${part}" ${questions.length ? '' : 'disabled'}><span class="mode-num">Part ${part + 1}</span><h2>${title}</h2><p>${part === 0 ? '질문 1–10' : '질문 11–20'}</p><span class="start"><span>${questions.length}개의 질문</span><span>${!questions.length ? '선택된 질문 없음' : run ? '이어하기 ↗' : '시작하기 ↗'}</span></span></button>`;
+    return `<button class="mode-card ${part === 0 ? 'taste' : 'lies'}" data-part="${part}" ${questions.length ? '' : 'disabled'}><span class="mode-num">Part ${part + 1}</span><h2>${title}</h2><p>${partRange(part)}</p><span class="start"><span>${questions.length}개의 질문</span><span>${!questions.length ? '선택된 질문 없음' : run ? '이어하기 ↗' : '시작하기 ↗'}</span></span></button>`;
   }).join('')}</div><button class="secondary" data-action="home">← 홈 화면</button></section>`;
 }
 
@@ -60,7 +114,7 @@ function gameNav(index, total, taste = false) {
 function tastePage() {
   const run = state.taste;
   const item = run.items[run.index];
-  return `<section class="game"><div class="question-head"><h1>${item.question.id + 1}. ${esc(item.question.title)}</h1></div><div class="answer-grid${item.order.length === 4 ? ' four-cards' : ''}">${item.order.map((id, i) => {
+  return `<section class="game"><div class="question-head"><h1>${questionNumber(item.question)}. ${esc(item.question.title)}</h1></div><div class="answer-grid${item.order.length === 4 ? ' four-cards' : ''}">${item.order.map((id, i) => {
     const p = state.data.participants.find(p => p.id === id);
     const open = item.revealed.has(id);
     return `<button class="flip-card ${open ? 'flipped' : ''}" data-flip="${id}" aria-pressed="${open}" aria-label="${open ? `${esc(p.nickname)}. 눌러서 답변 보기` : `답변 ${i + 1}: ${esc(p.answers[item.question.id] || '아직 답변이 없어요')}. 눌러서 닉네임 공개`}" style="--card:${colors[i % colors.length]}"><span class="flip-inner"><span class="face front" aria-hidden="${open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="answer">${esc(p.answers[item.question.id] || '아직 답변이 없어요')}</span></span><span class="face back" aria-hidden="${!open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="nickname">${esc(p.nickname)}</span></span></span></button>`;
@@ -69,7 +123,7 @@ function tastePage() {
 
 function liesPage() {
   const run = state.lies, round = run.rounds[run.index];
-  const p = state.data.participants[run.index];
+  const p = state.data.participants.find(p => p.id === round.participantId);
   return `<section class="game"><div class="question-head"><h1>${esc(p.nickname)}님의 이야기</h1><p>세 가지 이야기 중, 거짓이라고 생각하는 문장을 골라 주세요.</p></div><div class="statements">${splitStatements(p.statements).map((s, i) => `<button class="statement-card ${round.revealed ? i === p.lie ? 'lie' : 'truth' : round.selected === i ? 'selected' : ''}" data-select="${i}" aria-pressed="${round.selected === i}" ${round.revealed ? 'aria-disabled="true"' : ''}><span class="statement-number">${String(i + 1).padStart(2, '0')}</span><span class="statement-text">${esc(s)}</span>${round.revealed ? `<span class="result-label">${i === p.lie ? '거짓' : '진실'}${round.selected === i ? ' · 내 선택' : ''}</span>` : ''}</button>`).join('')}</div><div class="reveal-box">${round.revealed ? `<p class="result-message">${round.selected === p.lie ? '작은 거짓말을 찾아냈어요!' : '예상 밖의 이야기였네요!'}</p><p class="result-sub">붉은 카드는 거짓, 초록 카드는 진실이에요. 이제 그 이야기를 들려주세요.</p>` : `<button class="primary" data-action="reveal" ${round.selected === null ? 'disabled' : ''}>정답 확인 <span aria-hidden="true">↗</span></button>`}</div>${gameNav(run.index, run.rounds.length)}</section>`;
 }
 
@@ -79,6 +133,7 @@ function finishPage() {
 }
 
 function render(focus = false) {
+  cancelSort();
   const pages = { upload: uploadPage, setup: setupPage, home: homePage, participants: participantPage, 'taste-parts': tastePartsPage, taste: tastePage, lies: liesPage, 'finish-taste': finishPage, 'finish-lies': finishPage };
   app.innerHTML = frame(pages[state.page]());
   if (focus) {
@@ -117,7 +172,7 @@ function startLies(reset = false) {
   if (!state.data.participants.every(lieReady)) {
     state.tab = 'lies'; state.page = 'setup'; state.error = '모든 참가자의 문장 세 개와 거짓 문장 하나를 설정하면 시작할 수 있어요.'; render(true); return;
   }
-  if (!state.lies || reset) state.lies = { index: 0, rounds: state.data.participants.map(() => ({ selected: null, revealed: false })) };
+  if (!state.lies || reset) state.lies = { index: 0, rounds: liePeople().map(p => ({ participantId: p.id, selected: null, revealed: false })) };
   go('lies');
 }
 
@@ -131,6 +186,7 @@ async function loadFile(file) {
     if (version !== fileReadVersion) return;
     const data = importCSV(text);
     state.participant = null;
+    state.lieOrder = null;
     state.data = data; state.filename = file.name; state.tab = 'participants'; invalidateRuns(); go('setup');
     announce(`${data.participants.length}명과 질문 ${data.questions.length}개를 불러왔어요.`);
   } catch (error) {
@@ -144,6 +200,10 @@ app.addEventListener('click', e => {
   if (!target || target.disabled) return;
   const action = target.dataset.action;
   if (target.dataset.tab) { state.tab = target.dataset.tab; state.error = ''; render(); app.querySelector(`#tab-${state.tab}`).focus(); return; }
+  if (target.dataset.transfer !== undefined) {
+    const q = state.data.questions.find(q => q.id === Number(target.dataset.transfer));
+    moveSortItem('questions', String(q.id), questionPart(q) === 0 ? 'ArrowRight' : 'ArrowLeft'); return;
+  }
   if (target.dataset.part !== undefined) { startTaste(Number(target.dataset.part)); return; }
   if (target.dataset.person) {
     state.participant = target.dataset.person; render();
@@ -174,6 +234,7 @@ app.addEventListener('click', e => {
       state.tab = 'participants';
       state.participant = null;
       state.randomStarts = true;
+      state.lieOrder = null;
       invalidateRuns();
       go('upload');
       announce('초기화했어요. CSV 파일을 다시 불러와 주세요.');
@@ -181,7 +242,7 @@ app.addEventListener('click', e => {
     case 'home': go('home'); break;
     case 'setup': go('setup'); break;
     case 'choose-file': app.querySelector('#csv-file').click(); break;
-    case 'demo': fileReadVersion++; state.participant = null; state.data = structuredClone(demo); state.filename = '가상 참가자 미리보기'; invalidateRuns(); go('home'); break;
+    case 'demo': fileReadVersion++; state.participant = null; state.lieOrder = null; state.data = structuredClone(demo); state.filename = '가상 참가자 미리보기'; invalidateRuns(); go('home'); break;
     case 'replace': go('upload'); break;
     case 'ready': {
       if (state.data.participants.some(p => !p.nickname.trim())) { state.error = '모든 참가자의 닉네임을 입력해 주세요.'; state.tab = 'participants'; render(); break; }
@@ -198,7 +259,7 @@ app.addEventListener('click', e => {
     case 'reveal': {
       const round = state.lies.rounds[state.lies.index];
       if (round.selected === null) break;
-      round.revealed = true; render(); announce(`${state.data.participants[state.lies.index].lie + 1}번 문장이 거짓이에요.`); break;
+      round.revealed = true; render(); announce(`${state.data.participants.find(p => p.id === round.participantId).lie + 1}번 문장이 거짓이에요.`); break;
     }
     case 'restart': target.dataset.kind === 'taste' ? startTaste(state.tastePart, true) : startLies(true); break;
   }
@@ -227,7 +288,7 @@ app.addEventListener('change', e => {
   if (el.dataset.question !== undefined) {
     const id = Number(el.dataset.question);
     state.data.questions.find(q => q.id === id).enabled = el.checked;
-    const part = id < 10 ? 0 : 1;
+    const part = questionPart(state.data.questions.find(q => q.id === id));
     state.tasteParts[part] = null;
     if (state.tastePart === part) state.taste = null;
   }
@@ -252,4 +313,5 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); app.querySelector(`[data-action="${e.key === 'ArrowRight' ? 'next' : 'prev'}"]`)?.click();
   }
 });
+const cancelSort = attachSortable(app, commitSort, moveSortItem);
 render();
