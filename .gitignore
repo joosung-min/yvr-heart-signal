@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+private-data/
+*.csv
+!examples/*.csv
+test-results/
+.env*
