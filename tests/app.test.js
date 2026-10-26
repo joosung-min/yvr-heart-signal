@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-test('navigation validates names and reset cancels in-flight CSV reads', async () => {
+test('validation, reset, and separate taste-part progress survive navigation', async () => {
   const handlers = {};
   const app = {
     innerHTML: '',
@@ -35,6 +35,39 @@ test('navigation validates names and reset cancels in-flight CSV reads', async (
     assert.doesNotMatch(app.innerHTML, /id="nickname-p0"/);
     assert.doesNotMatch(app.innerHTML, /responses\.csv/);
     assert.match(announcement.textContent, /초기화/);
+
+    const csv = ['time,nick,' + Array.from({ length: 20 }, (_, i) => `Question ${i + 1}`).join(',') + ',lies',
+      'now,A,' + Array.from({ length: 20 }, (_, i) => `Answer ${i + 1}`).join(',') + ',"one\ntwo\nthree"'].join('\n');
+    handlers.change({ target: { id: 'csv-file', dataset: {}, files: [{ name: 'parts.csv', size: csv.length, text: async () => csv }] } });
+    await new Promise(resolve => setImmediate(resolve));
+    handlers.change({ target: { dataset: { randomStarts: '' }, checked: false } });
+    click('ready');
+    click('start-taste');
+    assert.match(app.innerHTML, /data-part="0"/);
+    assert.match(app.innerHTML, /data-part="1"/);
+    const part = index => handlers.click({ target: { closest: () => ({ dataset: { part: String(index) } }) } });
+    part(0);
+    assert.match(app.innerHTML, /<h1>1\. Question 1<\/h1>/);
+    click('next');
+    click('taste-parts');
+    part(1);
+    assert.match(app.innerHTML, /<h1>11\. Question 11<\/h1>/);
+    click('next');
+    click('taste-parts');
+    part(0);
+    assert.match(app.innerHTML, /<h1>2\. Question 2<\/h1>/);
+    handlers.change({ target: { dataset: { question: '0' }, checked: false } });
+    click('taste-parts');
+    part(0);
+    assert.match(app.innerHTML, /<h1>2\. Question 2<\/h1>/);
+    for (let i = 0; i < 9; i++) click('next');
+    assert.match(app.innerHTML, /Part 1의 취향 시그널/);
+    assert.match(app.innerHTML, /data-action="taste-parts"/);
+    handlers.click({ target: { closest: () => ({ dataset: { action: 'restart', kind: 'taste' } }) } });
+    assert.match(app.innerHTML, /<h1>2\. Question 2<\/h1>/);
+    click('taste-parts');
+    part(1);
+    assert.match(app.innerHTML, /<h1>12\. Question 12<\/h1>/);
   } finally {
     delete globalThis.document;
     delete globalThis.window;

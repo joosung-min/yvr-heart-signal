@@ -92,3 +92,8 @@ export function createTasteRun(questions, participants, randomStarts = true, ran
     })
   };
 }
+
+// Split before filtering, so excluding a question never changes part membership.
+export function tastePartQuestions(questions, part) {
+  return questions.slice(part * 10, part * 10 + 10).filter(q => q.enabled);
+}

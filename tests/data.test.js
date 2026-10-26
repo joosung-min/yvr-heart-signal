@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCSV, importCSV, splitStatements, shuffled, lieReady, truthsFor, createTasteRun } from '../dist/data.js';
+import { parseCSV, importCSV, splitStatements, shuffled, lieReady, truthsFor, createTasteRun, tastePartQuestions } from '../dist/data.js';
 
 test('Google Forms CSV: BOM, quoted commas, escaped quotes, multiline and CRLF', () => {
   const csv = '\uFEFFTimestamp,닉네임,질문,진실과거짓\r\n2026-10-26,메이플,"노래, 그리고 ""산책""","첫째\r\n둘째\r\n셋째"\r\n';
@@ -62,4 +62,15 @@ test('disabling random start always shows answers and preserves participant data
   assert.ok(run.items.every(item => [...item.order].sort().join(',') === 'a,b'));
   assert.deepEqual(people, [{ id: 'a' }, { id: 'b' }]);
   assert.equal(createTasteRun(questions, people, undefined, () => 0).items[0].revealed.size, 2);
+});
+
+test('CSV position fixes part membership before question exclusions', () => {
+  const questions = Array.from({ length: 20 }, (_, id) => ({ id, enabled: true }));
+  questions[0].enabled = false;
+  assert.deepEqual(tastePartQuestions(questions, 0).map(q => q.id), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(tastePartQuestions(questions, 1).map(q => q.id), [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+  assert.equal(tastePartQuestions(questions.slice(0, 4), 1).length, 0);
+  questions.slice(0, 10).forEach(q => { q.enabled = false; });
+  assert.equal(tastePartQuestions(questions, 0).length, 0);
+  assert.equal(tastePartQuestions(questions, 1).length, 10);
 });
