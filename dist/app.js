@@ -3,6 +3,7 @@ import { importCSV, splitStatements, shuffled, lieReady, truthsFor, demo } from 
 const app = document.querySelector('#app');
 const announcement = document.querySelector('#announcement');
 const colors = ['#9a6552', '#647c70', '#a58555', '#7d7186', '#586f83', '#a66670'];
+let fileReadVersion = 0;
 const state = { page: 'upload', tab: 'participants', data: null, filename: '', error: '', taste: null, lies: null, participant: null };
 const heart = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20 3.8 12.1C-1.6 6.4 8.2 1.4 12 8c3.8-6.6 13.6-1.6 8.2 4.1Z" fill="currentColor"/></svg>';
 const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -10,7 +11,7 @@ const announce = message => { announcement.textContent = message; };
 const errorBox = () => state.error ? `<div class="error" role="alert">${esc(state.error)}</div>` : '';
 
 function frame(content) {
-  return `<div class="shell"><header class="topbar"><button class="brand" data-action="brand" aria-label="YVR Heart Signal 홈">${heart} Heart Signal <small>VANCOUVER</small></button><nav class="topnav" aria-label="주 메뉴">${state.data ? '<button class="text-btn" data-action="home">홈 화면</button><button class="text-btn" data-action="setup">진행 준비</button>' : ''}<span class="pill"><span class="dot"></span> ${state.data ? `${state.data.participants.length}명의 시그널` : 'YVR EDITION 01'}</span></nav></header><main id="main">${content}</main></div>`;
+  return `<div class="shell${['taste', 'lies'].includes(state.page) ? ' game-shell' : ''}"><header class="topbar"><button class="brand" data-action="brand" aria-label="Heart Signal · 초기화하고 CSV 업로드로">${heart} Heart Signal <small>VANCOUVER</small></button><nav class="topnav" aria-label="주 메뉴">${state.data ? '<button class="text-btn" data-action="home">홈 화면</button><button class="text-btn" data-action="setup">진행 준비</button>' : ''}<span class="pill"><span class="dot"></span> ${state.data ? `${state.data.participants.length}명의 시그널` : 'YVR EDITION 01'}</span></nav></header><main id="main">${content}</main></div>`;
 }
 
 function uploadPage() {
@@ -44,10 +45,6 @@ function participantPage() {
   return `<section class="profile-page"><div class="section-head"><h1>참가자별 Q&amp;A</h1></div><div class="participant-picker" role="group" aria-label="참가자 선택">${participants.map(p => `<button class="person-button ${p.id === person.id ? 'active' : ''}" data-person="${p.id}" aria-pressed="${p.id === person.id}">${esc(p.nickname)}</button>`).join('')}</div><section aria-label="${esc(person.nickname)}님의 질답"><h2 class="profile-name">${esc(person.nickname)}</h2><div class="qa-list">${questions.map((q, i) => `<article class="qa-item"><h3>${i + 1}. ${esc(q.title)}</h3><p>${esc(person.answers[q.id] || '아직 답변이 없어요')}</p></article>`).join('')}</div><section class="profile-truths"><h2>두 가지 진실</h2>${truths.length ? `<div class="truth-list">${truths.map(t => `<p class="truth-item">${esc(t)}</p>`).join('')}</div>` : '<p class="editor-note">진행 준비에서 거짓 문장을 지정하면 두 가지 진실을 볼 수 있어요.</p>'}</section></section><div class="setup-actions"><button class="secondary" data-action="home">← 홈 화면</button></div></section>`;
 }
 
-function gameHeader(kind, index, total) {
-  return `<div class="game-top"><span>${kind === 'taste' ? '01 / 취향 시그널' : '02 / TWO TRUTHS AND A LIE'}</span><span>${String(index + 1).padStart(2, '0')} <span style="color:#b1a597">/ ${String(total).padStart(2, '0')}</span></span></div><div class="progress" role="progressbar" aria-label="진행률" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${index + 1}"><span style="width:${100 * (index + 1) / total}%"></span></div>`;
-}
-
 function gameNav(index, total) {
   return `<div class="nav-row"><button class="secondary" data-action="prev" ${index === 0 ? 'disabled' : ''}>← 이전</button><button class="primary" data-action="next">${index === total - 1 ? '마무리하기' : '다음'} →</button></div>`;
 }
@@ -55,7 +52,7 @@ function gameNav(index, total) {
 function tastePage() {
   const run = state.taste;
   const item = run.items[run.index];
-  return `<section class="game">${gameHeader('taste', run.index, run.items.length)}<div class="question-head"><h1>${run.index + 1}. ${esc(item.question.title)}</h1></div><div class="answer-grid">${item.order.map((id, i) => {
+  return `<section class="game"><div class="question-head"><h1>${run.index + 1}. ${esc(item.question.title)}</h1></div><div class="answer-grid">${item.order.map((id, i) => {
     const p = state.data.participants.find(p => p.id === id);
     const open = item.revealed.has(id);
     return `<button class="flip-card ${open ? 'flipped' : ''}" data-flip="${id}" aria-pressed="${open}" aria-label="${open ? `${esc(p.nickname)}. 눌러서 답변 보기` : `답변 ${i + 1}: ${esc(p.answers[item.question.id] || '아직 답변이 없어요')}. 눌러서 닉네임 공개`}" style="--card:${colors[i % colors.length]}"><span class="flip-inner"><span class="face front" aria-hidden="${open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="answer">${esc(p.answers[item.question.id] || '아직 답변이 없어요')}</span></span><span class="face back" aria-hidden="${!open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="nickname">${esc(p.nickname)}</span></span></span></button>`;
@@ -65,7 +62,7 @@ function tastePage() {
 function liesPage() {
   const run = state.lies, round = run.rounds[run.index];
   const p = state.data.participants[run.index];
-  return `<section class="game">${gameHeader('lies', run.index, run.rounds.length)}<div class="question-head"><h1>${esc(p.nickname)}님의 이야기</h1><p>세 가지 이야기 중, 거짓이라고 생각하는 문장을 골라 주세요.</p></div><div class="statements">${splitStatements(p.statements).map((s, i) => `<button class="statement-card ${round.revealed ? i === p.lie ? 'lie' : 'truth' : round.selected === i ? 'selected' : ''}" data-select="${i}" aria-pressed="${round.selected === i}" ${round.revealed ? 'aria-disabled="true"' : ''}><span class="statement-number">${String(i + 1).padStart(2, '0')}</span><span class="statement-text">${esc(s)}</span>${round.revealed ? `<span class="result-label">${i === p.lie ? '거짓' : '진실'}${round.selected === i ? ' · 내 선택' : ''}</span>` : ''}</button>`).join('')}</div><div class="reveal-box">${round.revealed ? `<p class="result-message">${round.selected === p.lie ? '작은 거짓말을 찾아냈어요!' : '예상 밖의 이야기였네요!'}</p><p class="result-sub">붉은 카드는 거짓, 초록 카드는 진실이에요. 이제 그 이야기를 들려주세요.</p>` : `<button class="primary" data-action="reveal" ${round.selected === null ? 'disabled' : ''}>정답 확인 <span aria-hidden="true">↗</span></button>`}</div>${gameNav(run.index, run.rounds.length)}</section>`;
+  return `<section class="game"><div class="question-head"><h1>${esc(p.nickname)}님의 이야기</h1><p>세 가지 이야기 중, 거짓이라고 생각하는 문장을 골라 주세요.</p></div><div class="statements">${splitStatements(p.statements).map((s, i) => `<button class="statement-card ${round.revealed ? i === p.lie ? 'lie' : 'truth' : round.selected === i ? 'selected' : ''}" data-select="${i}" aria-pressed="${round.selected === i}" ${round.revealed ? 'aria-disabled="true"' : ''}><span class="statement-number">${String(i + 1).padStart(2, '0')}</span><span class="statement-text">${esc(s)}</span>${round.revealed ? `<span class="result-label">${i === p.lie ? '거짓' : '진실'}${round.selected === i ? ' · 내 선택' : ''}</span>` : ''}</button>`).join('')}</div><div class="reveal-box">${round.revealed ? `<p class="result-message">${round.selected === p.lie ? '작은 거짓말을 찾아냈어요!' : '예상 밖의 이야기였네요!'}</p><p class="result-sub">붉은 카드는 거짓, 초록 카드는 진실이에요. 이제 그 이야기를 들려주세요.</p>` : `<button class="primary" data-action="reveal" ${round.selected === null ? 'disabled' : ''}>정답 확인 <span aria-hidden="true">↗</span></button>`}</div>${gameNav(run.index, run.rounds.length)}</section>`;
 }
 
 function finishPage() {
@@ -84,7 +81,17 @@ function render(focus = false) {
   wireDropzone();
 }
 
-function go(page) { state.page = page; state.error = ''; render(true); }
+function go(page) {
+  state.error = '';
+  if (state.data && !['upload', 'setup'].includes(page) && state.data.participants.some(p => !p.nickname.trim())) {
+    state.page = 'setup';
+    state.tab = 'participants';
+    state.error = '모든 참가자의 닉네임을 입력해 주세요.';
+  } else {
+    state.page = page;
+  }
+  render(true);
+}
 function invalidateRuns() { state.taste = null; state.lies = null; }
 function startTaste(reset = false) {
   const questions = state.data.questions.filter(q => q.enabled);
@@ -102,13 +109,20 @@ function startLies(reset = false) {
 
 async function loadFile(file) {
   if (!file) return;
+  const version = ++fileReadVersion;
   try {
     if (!file.name.toLowerCase().endsWith('.csv')) throw new Error('확장자가 .csv인 파일을 선택해 주세요.');
     if (file.size > 10 * 1024 * 1024) throw new Error('10MB 이하의 CSV를 선택해 주세요.');
-    const data = importCSV(await file.text());
+    const text = await file.text();
+    if (version !== fileReadVersion) return;
+    const data = importCSV(text);
+    state.participant = null;
     state.data = data; state.filename = file.name; state.tab = 'participants'; invalidateRuns(); go('setup');
     announce(`${data.participants.length}명과 질문 ${data.questions.length}개를 불러왔어요.`);
-  } catch (error) { state.error = error.message; render(); }
+  } catch (error) {
+    if (version !== fileReadVersion) return;
+    state.error = error.message; render();
+  }
 }
 
 app.addEventListener('click', e => {
@@ -139,6 +153,7 @@ app.addEventListener('click', e => {
   }
   switch (action) {
     case 'brand':
+      fileReadVersion++;
       state.data = null;
       state.filename = '';
       state.tab = 'participants';
@@ -150,7 +165,7 @@ app.addEventListener('click', e => {
     case 'home': go('home'); break;
     case 'setup': go('setup'); break;
     case 'choose-file': app.querySelector('#csv-file').click(); break;
-    case 'demo': state.data = structuredClone(demo); state.filename = '가상 참가자 미리보기'; invalidateRuns(); go('home'); break;
+    case 'demo': fileReadVersion++; state.participant = null; state.data = structuredClone(demo); state.filename = '가상 참가자 미리보기'; invalidateRuns(); go('home'); break;
     case 'replace': go('upload'); break;
     case 'ready': {
       if (state.data.participants.some(p => !p.nickname.trim())) { state.error = '모든 참가자의 닉네임을 입력해 주세요.'; state.tab = 'participants'; render(); break; }
