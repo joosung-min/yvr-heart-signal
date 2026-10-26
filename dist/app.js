@@ -1,10 +1,10 @@
-import { importCSV, splitStatements, shuffled, lieReady, truthsFor, demo } from './data.js';
+import { importCSV, splitStatements, lieReady, truthsFor, createTasteRun, demo } from './data.js?v=20261026-4';
 
 const app = document.querySelector('#app');
 const announcement = document.querySelector('#announcement');
 const colors = ['#9a6552', '#647c70', '#a58555', '#7d7186', '#586f83', '#a66670'];
 let fileReadVersion = 0;
-const state = { page: 'upload', tab: 'participants', data: null, filename: '', error: '', taste: null, lies: null, participant: null };
+const state = { page: 'upload', tab: 'participants', data: null, filename: '', error: '', taste: null, lies: null, participant: null, randomStarts: true };
 const heart = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20 3.8 12.1C-1.6 6.4 8.2 1.4 12 8c3.8-6.6 13.6-1.6 8.2 4.1Z" fill="currentColor"/></svg>';
 const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const announce = message => { announcement.textContent = message; };
@@ -22,7 +22,7 @@ function setupPage() {
   const { participants, questions } = state.data;
   let content = '';
   if (state.tab === 'participants') content = `<div class="participant-fields">${participants.map((p, i) => `<div class="field-card"><label class="field-label" for="nickname-${p.id}">PARTICIPANT ${String(i + 1).padStart(2, '0')}</label><input id="nickname-${p.id}" data-nickname="${p.id}" value="${esc(p.nickname)}" maxlength="60" autocomplete="off"></div>`).join('')}</div><div class="notice">화면에 공개할 닉네임을 확인해 주세요. 취향 카드의 순서는 질문마다 무작위로 섞여요.</div>`;
-  if (state.tab === 'questions') content = `<div class="setup-list">${questions.map((q, i) => `<label class="question-edit"><input type="checkbox" data-question="${q.id}" ${q.enabled ? 'checked' : ''}><div><span>${String(i + 1).padStart(2, '0')}</span>${esc(q.title)}</div></label>`).join('')}</div>`;
+  if (state.tab === 'questions') content = `<label class="question-edit random-option"><input type="checkbox" data-random-starts ${state.randomStarts ? 'checked' : ''}><div><strong>시작 면 랜덤</strong><p>질문마다 모든 카드를 답변 또는 닉네임으로 시작해요. 끄면 항상 답변부터 보여요.</p></div></label><div class="setup-list">${questions.map((q, i) => `<label class="question-edit"><input type="checkbox" data-question="${q.id}" ${q.enabled ? 'checked' : ''}><div><span>${String(i + 1).padStart(2, '0')}</span>${esc(q.title)}</div></label>`).join('')}</div>`;
   if (state.tab === 'lies') content = `<div class="notice">진행자만 보는 정답 설정 화면이에요. 참가자별로 세 문장을 한 줄씩 적고, 거짓인 문장 하나를 선택해 주세요.</div><div class="setup-list">${participants.map(p => `<section class="lie-editor"><h3>${esc(p.nickname)}</h3><label class="field-label" for="statements-${p.id}">두 가지 진실과 하나의 거짓 · 한 줄에 한 문장</label><textarea id="statements-${p.id}" data-statements="${p.id}" rows="4">${esc(p.statements)}</textarea><div id="options-${p.id}">${lieOptions(p)}</div></section>`).join('')}</div>`;
   return `<div class="section-head"><div><div class="eyebrow">BEFORE WE BEGIN</div><h1>오늘의 시그널을 준비해요</h1><p class="desc">함께할 사람들, 궁금한 질문들, 그리고 작은 비밀 하나.</p></div><span class="meta">${esc(state.filename)}</span></div><div class="tabs" role="tablist" aria-label="진행 준비">${[['participants', '참가자'], ['questions', '취향 질문'], ['lies', '진실과 거짓']].map(([id, label]) => `<button id="tab-${id}" class="tab ${state.tab === id ? 'active' : ''}" role="tab" aria-selected="${state.tab === id}" aria-controls="setup-panel" data-tab="${id}">${label}</button>`).join('')}</div>${errorBox()}<div id="setup-panel" role="tabpanel" aria-labelledby="tab-${state.tab}">${content}</div><div class="setup-actions"><button class="text-btn" data-action="replace">다른 CSV 불러오기</button><button class="primary" data-action="ready">준비 완료 · 홈으로 →</button></div>`;
 }
@@ -52,7 +52,7 @@ function gameNav(index, total) {
 function tastePage() {
   const run = state.taste;
   const item = run.items[run.index];
-  return `<section class="game"><div class="question-head"><h1>${run.index + 1}. ${esc(item.question.title)}</h1></div><div class="answer-grid">${item.order.map((id, i) => {
+  return `<section class="game"><div class="question-head"><h1>${run.index + 1}. ${esc(item.question.title)}</h1></div><div class="answer-grid${item.order.length === 4 ? ' four-cards' : ''}">${item.order.map((id, i) => {
     const p = state.data.participants.find(p => p.id === id);
     const open = item.revealed.has(id);
     return `<button class="flip-card ${open ? 'flipped' : ''}" data-flip="${id}" aria-pressed="${open}" aria-label="${open ? `${esc(p.nickname)}. 눌러서 답변 보기` : `답변 ${i + 1}: ${esc(p.answers[item.question.id] || '아직 답변이 없어요')}. 눌러서 닉네임 공개`}" style="--card:${colors[i % colors.length]}"><span class="flip-inner"><span class="face front" aria-hidden="${open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="answer">${esc(p.answers[item.question.id] || '아직 답변이 없어요')}</span></span><span class="face back" aria-hidden="${!open}"><span class="card-index">${String(i + 1).padStart(2, '0')}</span><span class="nickname">${esc(p.nickname)}</span></span></span></button>`;
@@ -96,7 +96,7 @@ function invalidateRuns() { state.taste = null; state.lies = null; }
 function startTaste(reset = false) {
   const questions = state.data.questions.filter(q => q.enabled);
   if (!questions.length) { state.error = '진행 준비에서 취향 질문을 하나 이상 선택해 주세요.'; render(); return; }
-  if (!state.taste || reset) state.taste = { index: 0, items: questions.map(question => ({ question, order: shuffled(state.data.participants.map(p => p.id)), revealed: new Set() })) };
+  if (!state.taste || reset) state.taste = createTasteRun(questions, state.data.participants, state.randomStarts);
   go('taste');
 }
 function startLies(reset = false) {
@@ -158,6 +158,7 @@ app.addEventListener('click', e => {
       state.filename = '';
       state.tab = 'participants';
       state.participant = null;
+      state.randomStarts = true;
       invalidateRuns();
       go('upload');
       announce('초기화했어요. CSV 파일을 다시 불러와 주세요.');
@@ -203,6 +204,10 @@ app.addEventListener('input', e => {
 app.addEventListener('change', e => {
   const el = e.target;
   if (el.id === 'csv-file') loadFile(el.files[0]);
+  if (el.dataset.randomStarts !== undefined) {
+    state.randomStarts = el.checked;
+    state.taste = null;
+  }
   if (el.dataset.question !== undefined) {
     state.data.questions.find(q => q.id === Number(el.dataset.question)).enabled = el.checked; state.taste = null;
   }

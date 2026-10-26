@@ -1119,3 +1119,18 @@ textarea {
     display:none;
   }
 }
+
+/* Give a two-row grid more height; three or more rows retain compact cards. */
+.answer-grid.four-cards .flip-card {
+  height:clamp(200px, 34vh, 340px);
+  height:clamp(200px, 34svh, 340px);
+}
+.random-option {
+  margin-bottom:20px;
+  background:#efe7de;
+}
+.random-option p {
+  margin-top:5px;
+  font-size:12px;
+  color:var(--muted);
+}

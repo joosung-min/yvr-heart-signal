@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCSV, importCSV, splitStatements, shuffled, lieReady, truthsFor } from '../dist/data.js';
+import { parseCSV, importCSV, splitStatements, shuffled, lieReady, truthsFor, createTasteRun } from '../dist/data.js';
 
 test('Google Forms CSV: BOM, quoted commas, escaped quotes, multiline and CRLF', () => {
   const csv = '\uFEFFTimestamp,닉네임,질문,진실과거짓\r\n2026-10-26,메이플,"노래, 그리고 ""산책""","첫째\r\n둘째\r\n셋째"\r\n';
@@ -40,4 +40,26 @@ test('participant profile shows only verified truths, regardless of the lie posi
   }
   assert.deepEqual(truthsFor({ statements: 'first\nsecond\nthird', lie: null }), []);
   assert.deepEqual(truthsFor({ statements: 'first\nsecond', lie: 0 }), []);
+});
+
+test('random start chooses the same face for every card in a question', () => {
+  const people = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+  const questions = [{ id: 0 }, { id: 1 }];
+  const samples = [0.1, 0.2, 0.3, 0.4, 0.9, 0.2, 0.3, 0.4];
+  const run = createTasteRun(questions, people, true, () => samples.shift());
+  assert.deepEqual([...run.items[0].revealed], ['a', 'b', 'c', 'd']);
+  assert.equal(run.items[1].revealed.size, 0);
+  run.items[0].revealed.delete('a');
+  assert.equal(run.items[0].revealed.size, 3);
+  assert.equal(run.items[1].revealed.size, 0);
+});
+
+test('disabling random start always shows answers and preserves participant data', () => {
+  const people = [{ id: 'a' }, { id: 'b' }];
+  const questions = [{ id: 0 }, { id: 1 }];
+  const run = createTasteRun(questions, people, false, () => 0);
+  assert.ok(run.items.every(item => item.revealed.size === 0));
+  assert.ok(run.items.every(item => [...item.order].sort().join(',') === 'a,b'));
+  assert.deepEqual(people, [{ id: 'a' }, { id: 'b' }]);
+  assert.equal(createTasteRun(questions, people, undefined, () => 0).items[0].revealed.size, 2);
 });

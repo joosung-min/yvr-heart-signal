@@ -80,3 +80,15 @@ export function truthsFor(participant) {
   if (!lieReady(participant)) return [];
   return splitStatements(participant.statements).filter((_, i) => i !== participant.lie);
 }
+
+// Choose one starting face per question; navigation reuses the resulting sets.
+export function createTasteRun(questions, participants, randomStarts = true, random = Math.random) {
+  const ids = participants.map(p => p.id);
+  return {
+    index: 0,
+    items: questions.map(question => {
+      const showNames = randomStarts && random() < 0.5;
+      return { question, order: shuffled(ids, random), revealed: new Set(showNames ? ids : []) };
+    })
+  };
+}
