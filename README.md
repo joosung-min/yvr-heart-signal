@@ -10,7 +10,9 @@ Node.js와 패키지 설치 없이 Python 3만으로 실행할 수 있습니다.
 python3 -m http.server 4173 --bind 127.0.0.1 --directory dist
 ```
 
-브라우저에서 <http://127.0.0.1:4173>을 여세요. Node.js가 있다면 `npm run dev`도 같은 서버를 실행합니다. 정적 웹사이트라 `dist/`를 정적 호스팅에 배포할 수도 있습니다. 저장소는 비공개로 생성했으며, 호스팅은 별도로 배포하지 않았습니다.
+브라우저에서 <http://127.0.0.1:4173>을 여세요. Node.js가 있다면 `npm run dev`도 같은 서버를 실행합니다. 정적 웹사이트라 `dist/`를 정적 호스팅에 배포할 수도 있습니다. 저장소는 공개 상태이며, `main` 브랜치에 푸시하면 GitHub Actions가 테스트 후 `dist/`만 GitHub Pages에 배포합니다.
+
+웹사이트: https://joosung-min.github.io/yvr-heart-signal/
 
 ## 준비와 진행
 
